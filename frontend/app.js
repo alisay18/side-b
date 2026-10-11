@@ -19,8 +19,8 @@ try {
 function node(tag,text,cls){const e=document.createElement(tag);if(text)e.textContent=text;if(cls)e.className=cls;return e;}
 function key(x){return JSON.stringify([x.query.toLowerCase(),[...x.sources].sort(),!!x.free,x.version||'']);}
 function persist(){queueWrite('/api/crates',crates);updateCount();}
-function updateCount(){$('#count').textContent=crates.reduce((sum,c)=>sum+c.searches.length,0);}
-function refreshCrateSelect(){const select=$('#crateSelect');select.replaceChildren();crates.forEach((c,i)=>{const option=node('option',c.name+' ('+c.searches.length+')');option.value=i;select.append(option);});select.value=active;}
+function updateCount(){$('#count').textContent=crates.reduce((sum,c)=>sum+c.searches.length+(c.tracks||[]).length,0);}
+function refreshCrateSelect(){const select=$('#crateSelect');select.replaceChildren();crates.forEach((c,i)=>{const option=node('option',c.name+' ('+(c.searches.length+(c.tracks||[]).length)+')');option.value=i;select.append(option);});select.value=active;}
 function updateSave(){const b=$('#saveSearch');if(b)b.textContent=crates[active].searches.some(x=>key(x)===key(current))?'Saved ✓':'＋ Save to '+crates[active].name;}
 function save(){if(!current)return;const list=crates[active].searches;if(!list.some(x=>key(x)===key(current)))list.unshift({...current,sources:[...current.sources]});persist();refreshCrateSelect();updateSave();if(!$('#crate').hidden)showCrate();}
 let recent=[];
@@ -28,6 +28,7 @@ try{const stored=JSON.parse(localStorage.getItem('side-b-history')||'[]');if(Arr
 const loaded=await request('/api/state');
 const initial=loaded.imported?loaded:await request('/api/import','POST',{crates,history:recent});
 crates=initial.crates;recent=initial.history;
+let editingTrack=null;
 $('#dataStatus').textContent='';$('#storageStatus').textContent='Saved to the database for this browser.';
 let writeQueue=Promise.resolve(),failed=false;
 function queueWrite(path,value){const snapshot=JSON.parse(JSON.stringify(value));writeQueue=writeQueue.then(async()=>{try{await request(path,'PUT',snapshot);if(!failed)$('#dataStatus').textContent='';}catch(e){failed=true;$('#dataStatus').textContent='Changes could not be saved. Keep this tab open and retry.';$('#retrySave').hidden=false;}});}
@@ -45,7 +46,7 @@ function run(){
  const search=q+(version&&!q.toLowerCase().includes(version)?' '+version:'');
  $('#discovery').hidden=true;
  const head=node('div',null,'result-head');head.append(node('h3','Search links for “'+q+'”'));
- const controls=node('div',null,'save-controls'),label=node('label','Crate');label.htmlFor='crateSelect';const select=node('select');select.id='crateSelect';select.onchange=()=>{active=Number(select.value);updateSave();if(!$('#crate').hidden)showCrate();};
+ const controls=node('div',null,'save-controls'),label=node('label','Crate');label.htmlFor='crateSelect';const select=node('select');select.id='crateSelect';select.onchange=()=>{active=Number(select.value);resetTrackForm();updateSave();if(!$('#crate').hidden)showCrate();};
  const saveButton=node('button',null,'save');saveButton.id='saveSearch';saveButton.onclick=save;
  controls.append(label,select,saveButton);head.append(controls);out.append(head);refreshCrateSelect();updateSave();
  const cards=node('div',null,'store-results');
@@ -58,16 +59,21 @@ function run(){
 $('#searchForm').onsubmit=e=>{e.preventDefault();run();};
 $('#version').onchange=()=>{if(current)run();};
 document.querySelectorAll('[data-term]').forEach(b=>b.onclick=()=>{$('#query').value=b.dataset.term;run();});
+function resetTrackForm(){editingTrack=null;$('#trackForm').reset();$('#trackSubmit').textContent='Add track';$('#cancelTrackEdit').hidden=true;$('#trackFeedback').textContent='';}
+$('#cancelTrackEdit').onclick=resetTrackForm;
+$('#trackForm').onsubmit=e=>{e.preventDefault();const url=new URL($('#trackUrl').value);if(!['http:','https:'].includes(url.protocol)||url.username||url.password){$('#trackFeedback').textContent='Use an http or https link without login details.';return;}const track={url:url.href,title:$('#trackTitle').value.trim(),artist:$('#trackArtist').value.trim(),status:$('#trackStatus').value,notes:$('#trackNotes').value};if(!track.title){$('#trackTitle').focus();return;}const tracks=crates[active].tracks ||= [];if(editingTrack!==null)tracks[editingTrack]=track;else tracks.unshift(track);resetTrackForm();persist();showCrate();if(current)refreshCrateSelect();$('#trackFeedback').textContent='Track saved.';};
+function renderTracks(){const list=$('#trackList');list.replaceChildren();const tracks=crates[active].tracks||[];if(!tracks.length)list.append(node('p','No tracks yet. Paste a link from a source above to keep it here.','crate-note'));tracks.forEach((t,i)=>{const row=node('article',null,'track-item'),details=node('div',null,'track-details'),link=node('a',t.title+' ↗','track-link');link.href=t.url;link.target='_blank';link.rel='noopener noreferrer';details.append(link);if(t.artist)details.append(node('p',t.artist,'track-artist'));details.append(node('small',new URL(t.url).hostname,'crate-note'));if(t.notes)details.append(node('p',t.notes,'track-note'));const controls=node('div',null,'track-actions'),label=node('label','Status'),select=node('select');select.setAttribute('aria-label','Status for '+t.title);[['want','Want'],['bought','Bought'],['owned','Owned']].forEach(([value,text])=>{const option=node('option',text);option.value=value;select.append(option);});select.value=t.status;select.onchange=()=>{t.status=select.value;persist();};label.append(select);const edit=node('button','Edit','remove');edit.onclick=()=>{editingTrack=i;$('#trackUrl').value=t.url;$('#trackTitle').value=t.title;$('#trackArtist').value=t.artist;$('#trackStatus').value=t.status;$('#trackNotes').value=t.notes;$('#trackSubmit').textContent='Save changes';$('#cancelTrackEdit').hidden=false;$('#trackFeedback').textContent='Editing '+t.title;$('#trackTitle').focus();};const remove=node('button','Remove','remove');remove.setAttribute('aria-label','Remove track '+t.title);remove.onclick=()=>{tracks.splice(i,1);resetTrackForm();persist();showCrate();if(current)refreshCrateSelect();};controls.append(label,edit,remove);row.append(details,controls);list.append(row);});}
 function showCrate(){
+ renderTracks();
  const tabs=$('#crateTabs'),list=$('#crateList');tabs.replaceChildren();list.replaceChildren();
- crates.forEach((c,i)=>{const b=node('button',c.name+' ('+c.searches.length+')','crate-tab');b.setAttribute('aria-pressed',i===active);b.onclick=()=>{active=i;showCrate();if(current){refreshCrateSelect();updateSave();}};tabs.append(b);});
+ crates.forEach((c,i)=>{const b=node('button',c.name+' ('+(c.searches.length+(c.tracks||[]).length)+')','crate-tab');b.setAttribute('aria-pressed',i===active);b.onclick=()=>{active=i;resetTrackForm();showCrate();if(current){refreshCrateSelect();updateSave();}};tabs.append(b);});
  if(!crates[active].searches.length)list.append(node('p','No saved searches in this crate yet. Search above, then save here.','crate-note'));
  crates[active].searches.forEach((s,i)=>{const row=node('div',null,'crate-item'),details=node('div'),open=node('button',s.query,'saved-query');open.onclick=()=>{$('#query').value=s.query;$('#version').value=s.version||'';$('#freeOnly').checked=!!s.free;document.querySelectorAll('[name=source]').forEach(c=>c.checked=s.sources.includes(c.value));run();$('#dig').scrollIntoView({behavior:'smooth'});};
  details.append(open,node('p',[versions[s.version||''],s.free?'Free-download keywords':'',s.sources.filter(id=>definitions[id]).map(id=>definitions[id].name).join(', ')].filter(Boolean).join(' · '),'crate-note'));
  const remove=node('button','Remove','remove');remove.setAttribute('aria-label','Remove saved search for '+s.query);remove.onclick=()=>{crates[active].searches.splice(i,1);persist();showCrate();if(current){refreshCrateSelect();updateSave();}};row.append(details,remove);list.append(row);});
  $('#crate').hidden=false;
 }
-$('#newCrateForm').onsubmit=e=>{e.preventDefault();const input=$('#crateName'),name=input.value.trim(),status=$('#crateStatus');if(!name)return;const existing=crates.findIndex(c=>c.name.toLowerCase()===name.toLowerCase());if(existing>=0){active=existing;status.textContent='Opened existing crate.';}else{crates.push({name,searches:[]});active=crates.length-1;persist();status.textContent='Created '+name+'.';}input.value='';showCrate();if(current){refreshCrateSelect();updateSave();}};
+$('#newCrateForm').onsubmit=e=>{e.preventDefault();const input=$('#crateName'),name=input.value.trim(),status=$('#crateStatus');if(!name)return;const existing=crates.findIndex(c=>c.name.toLowerCase()===name.toLowerCase());if(existing>=0){active=existing;status.textContent='Opened existing crate.';}else{crates.push({name,searches:[],tracks:[]});active=crates.length-1;persist();status.textContent='Created '+name+'.';}input.value='';resetTrackForm();showCrate();if(current){refreshCrateSelect();updateSave();}};
 $('#savedButton').onclick=()=>{showCrate();$('#crate').scrollIntoView({behavior:'smooth'});};
 $('#closeCrate').onclick=()=>{$('#crate').hidden=true;$('#savedButton').focus();};
 updateCount();

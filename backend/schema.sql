@@ -22,3 +22,15 @@ CREATE TABLE IF NOT EXISTS searches (
 );
 CREATE INDEX IF NOT EXISTS crates_session ON crates(session_id, position);
 CREATE INDEX IF NOT EXISTS searches_session ON searches(session_id, crate_id, position);
+
+CREATE TABLE IF NOT EXISTS tracks (
+  id INTEGER PRIMARY KEY,
+  crate_id INTEGER NOT NULL REFERENCES crates(id) ON DELETE CASCADE,
+  position INTEGER NOT NULL,
+  url TEXT NOT NULL,
+  title TEXT NOT NULL,
+  artist TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'want' CHECK(status IN ('want','bought','owned')),
+  notes TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS tracks_crate ON tracks(crate_id, position);

@@ -1,6 +1,6 @@
 # Side B
 
-A simple music search workspace for DJs. Search Bandcamp, Beatport, SoundCloud, Traxsource, and Boomkat; select mix-version keywords; save searches into named crates; and revisit recent searches.
+A simple music search workspace for DJs. Search Bandcamp, Beatport, SoundCloud, Traxsource, and Boomkat; select mix-version keywords; save searches and individual track links into named crates; and revisit recent searches.
 
 ## Run locally
 
@@ -23,12 +23,12 @@ Optional environment variables: `PORT`, `HOST`, `DB_PATH` (defaults to `data/sid
 
 - `frontend/`: HTML, CSS, JavaScript, and bundled source logos.
 - `backend/server.js`: Node HTTP server, validation, API, and SQLite persistence.
-- `backend/schema.sql`: SQL tables and indexes for browser sessions, crates, and searches.
+- `backend/schema.sql`: SQL tables and indexes for browser sessions, crates, searches, and tracks.
 - `test/`: API tests, including persistence across a server restart.
 
 ## Storage
 
-Crates and the most recent 20 searches are stored in SQLite. An HTTP-only browser cookie selects the browser's records. On the first visit, any existing Side B browser storage on the same origin is imported once. Changing ports creates a different localStorage origin; use the previous port for migration. Clearing cookies starts a new session. There are no user accounts or cross-device syncing yet.
+Crates, individual tracks, and the most recent 20 searches are stored in SQLite. Track entries include a URL, title, optional artist, Want/Bought/Owned status, and optional notes. Tracks can be edited or removed; status can be changed directly in the crate. Titles and artists are entered manually; links are not scraped. Existing databases gain the tracks table automatically on startup without changing saved searches. An HTTP-only browser cookie selects the browser's records. On the first visit, any existing Side B browser storage on the same origin is imported once. Changing ports creates a different localStorage origin; use the previous port for migration. Clearing cookies starts a new session. There are no user accounts or cross-device syncing yet.
 
 Writes are transactional and validated; database files are excluded from Git. Multiple tabs use last-write-wins for each collection. Back up the database before moving or deleting it.
 

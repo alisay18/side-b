@@ -15,11 +15,18 @@ function validateSearch(s) {
   if (!s || typeof s.query !== 'string' || !s.query.trim() || s.query.length > 180 || !Array.isArray(s.sources) || !s.sources.length || s.sources.length > 5 || s.sources.some(x => !sources.has(x)) || !versions.has(s.version || '') || (s.free !== undefined && typeof s.free !== 'boolean')) throw new RequestError(400, 'Invalid search.');
   return { query:s.query.trim(), sources:[...new Set(s.sources)], version:s.version || '', free:!!s.free };
 }
+function validateTrack(t) {
+  let url;
+  try { url = new URL(t?.url); } catch { throw new RequestError(400, 'Use a valid track URL.'); }
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || t.url.length > 2048 || typeof t.title !== 'string' || !t.title.trim() || t.title.length > 180 || typeof t.artist !== 'string' || t.artist.length > 180 || typeof t.notes !== 'string' || t.notes.length > 2000 || !['want','bought','owned'].includes(t.status)) throw new RequestError(400, 'Invalid track.');
+  return {url:url.href,title:t.title.trim(),artist:t.artist.trim(),status:t.status,notes:t.notes};
+}
 function validateCrates(input) {
   if (!Array.isArray(input) || !input.length || input.length > 100) throw new RequestError(400, 'Use between 1 and 100 crates.');
   return input.map(c => {
     if (!c || typeof c.name !== 'string' || !c.name.trim() || c.name.length > 60 || !Array.isArray(c.searches) || c.searches.length > 1000) throw new RequestError(400, 'Invalid crate.');
-    return { name:c.name.trim(), searches:c.searches.map(validateSearch) };
+    if (c.tracks !== undefined && (!Array.isArray(c.tracks) || c.tracks.length > 1000)) throw new RequestError(400, 'Invalid tracks.');
+    return { name:c.name.trim(), searches:c.searches.map(validateSearch), tracks:(c.tracks || []).map(validateTrack) };
   });
 }
 function validateHistory(input) {
@@ -43,6 +50,7 @@ export function createApplication({ dbPath = resolve(root, 'data/side-b.sqlite')
     db.prepare('DELETE FROM crates WHERE session_id=?').run(id);
     crates.forEach((c,i) => {
       const result = db.prepare('INSERT INTO crates(session_id,position,name) VALUES (?,?,?)').run(id,i,c.name);
+      (c.tracks || []).forEach((t,j) => db.prepare('INSERT INTO tracks(crate_id,position,url,title,artist,status,notes) VALUES (?,?,?,?,?,?,?)').run(result.lastInsertRowid,j,t.url,t.title,t.artist,t.status,t.notes));
       c.searches.forEach((s,j) => insertSearch.run(id,result.lastInsertRowid,j,s.query,JSON.stringify(s.sources),s.version,Number(s.free)));
     });
   }
@@ -54,7 +62,7 @@ export function createApplication({ dbPath = resolve(root, 'data/side-b.sqlite')
   function state(id) {
     return {
       imported:!!db.prepare('SELECT imported FROM sessions WHERE id=?').get(id).imported,
-      crates:db.prepare('SELECT id,name FROM crates WHERE session_id=? ORDER BY position').all(id).map(c => ({ name:c.name, searches:db.prepare('SELECT * FROM searches WHERE session_id=? AND crate_id=? ORDER BY position').all(id,c.id).map(decode) })),
+      crates:db.prepare('SELECT id,name FROM crates WHERE session_id=? ORDER BY position').all(id).map(c => ({ name:c.name, tracks:db.prepare('SELECT url,title,artist,status,notes FROM tracks WHERE crate_id=? ORDER BY position').all(c.id), searches:db.prepare('SELECT * FROM searches WHERE session_id=? AND crate_id=? ORDER BY position').all(id,c.id).map(decode) })),
       history:db.prepare('SELECT * FROM searches WHERE session_id=? AND crate_id IS NULL ORDER BY position').all(id).map(decode)
     };
   }
