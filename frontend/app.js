@@ -54,7 +54,7 @@ function run(){
  let term=search;if(free&&['bandcamp','soundcloud'].includes(id))term+=' free download';
  const link=node('a','View tracks on '+d.name+' ↗','store-link');link.href=d.url(term);link.target='_blank';link.rel='noopener noreferrer';card.append(link,node('small','Opens '+d.name+' in a new tab','link-hint'));cards.append(card);});
  out.append(cards,node('p',(version?'Version shortcuts add words to your search; check the mix on the source. ':'')+(free?'Free-download keywords apply to Bandcamp and SoundCloud only; availability is confirmed on the source.':'Availability and pricing are confirmed on each source.'),'result-note'));
- history.replaceState(null,'','#dig');
+ if(location.hash!=='#dig')location.hash='#dig';else renderView();
 }
 $('#searchForm').onsubmit=e=>{e.preventDefault();run();};
 $('#version').onchange=()=>{if(current)run();};
@@ -68,15 +68,23 @@ function showCrate(){
  const tabs=$('#crateTabs'),list=$('#crateList');tabs.replaceChildren();list.replaceChildren();
  crates.forEach((c,i)=>{const b=node('button',c.name+' ('+(c.searches.length+(c.tracks||[]).length)+')','crate-tab');b.setAttribute('aria-pressed',i===active);b.onclick=()=>{active=i;resetTrackForm();showCrate();if(current){refreshCrateSelect();updateSave();}};tabs.append(b);});
  if(!crates[active].searches.length)list.append(node('p','No saved searches in this crate yet. Search above, then save here.','crate-note'));
- crates[active].searches.forEach((s,i)=>{const row=node('div',null,'crate-item'),details=node('div'),open=node('button',s.query,'saved-query');open.onclick=()=>{$('#query').value=s.query;$('#version').value=s.version||'';$('#freeOnly').checked=!!s.free;document.querySelectorAll('[name=source]').forEach(c=>c.checked=s.sources.includes(c.value));run();$('#dig').scrollIntoView({behavior:'smooth'});};
+ crates[active].searches.forEach((s,i)=>{const row=node('div',null,'crate-item'),details=node('div'),open=node('button',s.query,'saved-query');open.onclick=()=>{$('#query').value=s.query;$('#version').value=s.version||'';$('#freeOnly').checked=!!s.free;document.querySelectorAll('[name=source]').forEach(c=>c.checked=s.sources.includes(c.value));run();};
  details.append(open,node('p',[versions[s.version||''],s.free?'Free-download keywords':'',s.sources.filter(id=>definitions[id]).map(id=>definitions[id].name).join(', ')].filter(Boolean).join(' · '),'crate-note'));
  const remove=node('button','Remove','remove');remove.setAttribute('aria-label','Remove saved search for '+s.query);remove.onclick=()=>{crates[active].searches.splice(i,1);persist();showCrate();if(current){refreshCrateSelect();updateSave();}};row.append(details,remove);list.append(row);});
  $('#crate').hidden=false;
 }
 $('#newCrateForm').onsubmit=e=>{e.preventDefault();const input=$('#crateName'),name=input.value.trim(),status=$('#crateStatus');if(!name)return;const existing=crates.findIndex(c=>c.name.toLowerCase()===name.toLowerCase());if(existing>=0){active=existing;status.textContent='Opened existing crate.';}else{crates.push({name,searches:[],tracks:[]});active=crates.length-1;persist();status.textContent='Created '+name+'.';}input.value='';resetTrackForm();showCrate();if(current){refreshCrateSelect();updateSave();}};
-$('#savedButton').onclick=()=>{showCrate();$('#crate').scrollIntoView({behavior:'smooth'});};
-$('#closeCrate').onclick=()=>{$('#crate').hidden=true;$('#savedButton').focus();};
-updateCount();
+function renderView(){
+ const isCrates=location.hash==='#crates';
+ $('.intro').hidden=isCrates;$('#dig').hidden=isCrates;$('#crate').hidden=!isCrates;
+ if(isCrates)showCrate();
+ $('#savedButton').toggleAttribute('aria-current',isCrates);$('#searchNav').toggleAttribute('aria-current',!isCrates);
+ if(isCrates)$('#savedButton').setAttribute('aria-current','page');else $('#searchNav').setAttribute('aria-current','page');
+ document.title=isCrates?'Your crates — Side B':'Side B — Music search';
+ window.scrollTo(0,0);
+}
+window.addEventListener('hashchange',renderView);
+updateCount();renderView();
 
 }
 async function request(path,method="GET",value){const res=await fetch(path,{method,headers:value===undefined?{}:{"Content-Type":"application/json"},body:value===undefined?undefined:JSON.stringify(value)});const data=await res.json();if(!res.ok)throw new Error(data.error||"Request failed");return data;}
