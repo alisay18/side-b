@@ -1,0 +1,9 @@
+{
+  "name": "side-b",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A music search workspace with named crates and recent searches",
+  "type": "module",
+  "engines": { "node": ">=22.13.0" },
+  "scripts": { "start": "node backend/server.js", "test": "node --test test/*.test.js", "check": "node --check backend/server.js && node --check frontend/app.js" }
+}
