@@ -44,7 +44,6 @@ function run(){
  if(!sources.length){out.append(node('p','Choose at least one source to search.','result-note'));return;}
  const free=$('#freeOnly').checked,version=$('#version').value;current={query:q,sources,free,version};recent=recent.filter(s=>key(s)!==key(current));recent.unshift({...current,sources:[...sources]});recent=recent.slice(0,20);persistHistory();
  const search=q+(version&&!q.toLowerCase().includes(version)?' '+version:'');
- $('#discovery').hidden=true;
  const head=node('div',null,'result-head');head.append(node('h3','Search links for “'+q+'”'));
  const controls=node('div',null,'save-controls'),label=node('label','Crate');label.htmlFor='crateSelect';const select=node('select');select.id='crateSelect';select.onchange=()=>{active=Number(select.value);resetTrackForm();updateSave();if(!$('#crate').hidden)showCrate();};
  const saveButton=node('button',null,'save');saveButton.id='saveSearch';saveButton.onclick=save;
@@ -58,7 +57,6 @@ function run(){
 }
 $('#searchForm').onsubmit=e=>{e.preventDefault();run();};
 $('#version').onchange=()=>{if(current)run();};
-document.querySelectorAll('[data-term]').forEach(b=>b.onclick=()=>{$('#query').value=b.dataset.term;run();});
 function resetTrackForm(){editingTrack=null;$('#trackForm').reset();$('#trackSubmit').textContent='Add track';$('#cancelTrackEdit').hidden=true;$('#trackFeedback').textContent='';}
 $('#cancelTrackEdit').onclick=resetTrackForm;
 $('#trackForm').onsubmit=e=>{e.preventDefault();const url=new URL($('#trackUrl').value);if(!['http:','https:'].includes(url.protocol)||url.username||url.password){$('#trackFeedback').textContent='Use an http or https link without login details.';return;}const track={url:url.href,title:$('#trackTitle').value.trim(),artist:$('#trackArtist').value.trim(),status:$('#trackStatus').value,notes:$('#trackNotes').value};if(!track.title){$('#trackTitle').focus();return;}const tracks=crates[active].tracks ||= [];if(editingTrack!==null)tracks[editingTrack]=track;else tracks.unshift(track);resetTrackForm();persist();showCrate();if(current)refreshCrateSelect();$('#trackFeedback').textContent='Track saved.';};
