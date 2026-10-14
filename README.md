@@ -1,4 +1,4 @@
-# Side B
+# B Side
 
 A simple music search workspace for DJs. Search Bandcamp, Beatport, SoundCloud, Traxsource, and Boomkat; select mix-version keywords; save searches and individual track links into named crates; and revisit recent searches.
 
@@ -28,7 +28,7 @@ Optional environment variables: `PORT`, `HOST`, `DB_PATH` (defaults to `data/sid
 
 ## Storage
 
-Crates, individual tracks, and the most recent 20 searches are stored in SQLite. Track entries include a URL, title, optional artist, Want/Bought/Owned status, and optional notes. Tracks can be edited or removed; status can be changed directly in the crate. Titles and artists are entered manually; links are not scraped. Existing databases gain the tracks table automatically on startup without changing saved searches. An HTTP-only browser cookie selects the browser's records. On the first visit, any existing Side B browser storage on the same origin is imported once. Changing ports creates a different localStorage origin; use the previous port for migration. Clearing cookies starts a new session. There are no user accounts or cross-device syncing yet.
+Crates, individual tracks, and the most recent 20 searches are stored in SQLite. Track entries include a URL, title, optional artist, Want/Bought/Owned status, and optional notes. Tracks can be edited or removed; status can be changed directly in the crate. Titles and artists are entered manually; links are not scraped. Existing databases gain the tracks table automatically on startup without changing saved searches. An HTTP-only browser cookie selects the browser's records. On the first visit, any existing B Side browser storage on the same origin is imported once. Changing ports creates a different localStorage origin; use the previous port for migration. Clearing cookies starts a new session. There are no user accounts or cross-device syncing yet.
 
 Writes are transactional and validated; database files are excluded from Git. Multiple tabs use last-write-wins for each collection. Back up the database before moving or deleting it.
 
@@ -45,4 +45,7 @@ The app opens external store search pages. It does not fetch live catalog listin
 
 ## Logos
 
-Bandcamp, Beatport, and SoundCloud icons are from Simple Icons. Traxsource and Boomkat assets come from their websites. Logos belong to their respective owners; Side B is not affiliated with these services.
+Bandcamp, Beatport, and SoundCloud icons are from Simple Icons. Traxsource and Boomkat assets come from their websites. Logos belong to their respective owners; B Side is not affiliated with these services.
+
+## Track availability
+Track title checks run by default; turn them off for artist, label or genre searches. An optional artist narrows the match. The backend reads public search pages through Jina Reader and shows matching track links, no match in checked results, or unable to verify. Checks are not full-catalog or purchase/download guarantees. SoundCloud matches may be listening-only uploads. Source access can be blocked.

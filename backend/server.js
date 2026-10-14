@@ -1,3 +1,4 @@
+import { createAvailabilityChecker } from './availability.js';
 import { createServer } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
@@ -66,6 +67,7 @@ export function createApplication({ dbPath = resolve(root, 'data/side-b.sqlite')
       history:db.prepare('SELECT * FROM searches WHERE session_id=? AND crate_id IS NULL ORDER BY position').all(id).map(decode)
     };
   }
+  const checkAvailability=createAvailabilityChecker();
   const server = createServer(async (req,res) => {
     const json = (status,value) => { res.writeHead(status, {'Content-Type':'application/json', 'Cache-Control':'no-store'}); res.end(JSON.stringify(value)); };
     res.setHeader('X-Content-Type-Options','nosniff');
@@ -79,6 +81,11 @@ export function createApplication({ dbPath = resolve(root, 'data/side-b.sqlite')
           db.prepare('INSERT INTO sessions(id) VALUES (?)').run(id);
           saveCrates(id,[{name:'My crate',searches:[]}]);
           res.setHeader('Set-Cookie', `side_b_session=${id}; HttpOnly; SameSite=Strict; Path=/; Max-Age=31536000`);
+        }
+        if(req.method==='POST'&&url.pathname==='/api/availability'){
+          const input=await body(req);
+          if(!input||!sources.has(input.source)||typeof input.title!=='string'||!input.title.trim()||input.title.length>180||typeof input.artist!=='string'||input.artist.length>180)throw new RequestError(400,'Enter a track title.');
+          return json(200,await checkAvailability(input.source,{title:input.title.trim(),artist:input.artist.trim()}));
         }
         if (req.method === 'GET' && url.pathname === '/api/state') return json(200,state(id));
         if (req.method === 'POST' && url.pathname === '/api/import') {
@@ -104,5 +111,5 @@ export function createApplication({ dbPath = resolve(root, 'data/side-b.sqlite')
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const {server}=createApplication({dbPath:process.env.DB_PATH ? resolve(process.env.DB_PATH) : undefined});
   const port=Number(process.env.PORT || 4175), host=process.env.HOST || '127.0.0.1';
-  server.listen(port,host,()=>console.log(`Side B: http://${host}:${server.address().port}`));
+  server.listen(port,host,()=>console.log(`B Side: http://${host}:${server.address().port}`));
 }
