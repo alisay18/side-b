@@ -1,5 +1,7 @@
 # B Side
 
+Live site: https://b-side-dig.vercel.app/
+
 A simple music search workspace for DJs. Search Bandcamp, Beatport, SoundCloud, Traxsource, and Boomkat; select mix-version keywords; save searches and individual track links into named crates; and revisit recent searches.
 
 ## Run locally

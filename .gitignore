@@ -1,12 +1,14 @@
 node_modules/
 data/
 dist/
+public/
+.vercel/
 .env
 .env.*
 !.env.example
 .DS_Store
 *.log
 
-node_modules/
-public/
-.vercel/
+# Local integration tooling
+.agents/skills/turso-cloud/
+skills-lock.json
