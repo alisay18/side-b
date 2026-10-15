@@ -49,3 +49,9 @@ Bandcamp, Beatport, and SoundCloud icons are from Simple Icons. Traxsource and B
 
 ## Track availability
 Track title checks run by default; turn them off for artist, label or genre searches. An optional artist narrows the match. The backend reads public search pages through Jina Reader and shows matching track links, no match in checked results, or unable to verify. Checks are not full-catalog or purchase/download guarantees. SoundCloud matches may be listening-only uploads. Source access can be blocked.
+
+## Deploy to Vercel
+
+The Vercel project name is `b-side` (the exact `.vercel.app` alias depends on availability). Run `npm run build` to copy the frontend into `public/`; `vercel.json` routes API requests to `api/index.js`.
+
+Configure `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` in Vercel before deploying. The hosted backend uses persistent libSQL/Turso storage; local development continues to use the SQLite file. Hosted and local data are separate. Do not deploy with a temporary filesystem database. No local database files are included in deployments. Use Vercel's normal account sign-in for publishing; a custom domain requires ownership and DNS configuration.

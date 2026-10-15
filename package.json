@@ -1,9 +1,19 @@
 {
-  "name": "side-b",
+  "name": "b-side",
   "version": "0.1.0",
   "private": true,
   "description": "A music search workspace with named crates and recent searches",
   "type": "module",
-  "engines": { "node": ">=22.13.0" },
-  "scripts": { "start": "node backend/server.js", "test": "node --test test/*.test.js", "check": "node --check backend/server.js && node --check frontend/app.js" }
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "start": "node backend/server.js",
+    "test": "node --test test/*.test.js",
+    "check": "node --check backend/server.js && node --check frontend/app.js",
+    "build": "node scripts/build.mjs"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.18.0"
+  }
 }
