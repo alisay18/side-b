@@ -1,5 +1,7 @@
 async function main(){
 const $ = s => document.querySelector(s);
+let pendingSearch=false;
+$('#searchForm').onsubmit=e=>{e.preventDefault();pendingSearch=true;};
 const definitions = {
  bandcamp:{name:'Bandcamp',url:q=>'https://bandcamp.com/search?q='+encodeURIComponent(q)},
  beatport:{name:'Beatport',url:q=>'https://www.beatport.com/search?q='+encodeURIComponent(q)},
@@ -82,7 +84,7 @@ function renderView(){
  window.scrollTo(0,0);
 }
 window.addEventListener('hashchange',renderView);
-updateCount();renderView();
+updateCount();renderView();if(pendingSearch)run();
 
 }
 async function request(path,method="GET",value){const res=await fetch(path,{method,headers:value===undefined?{}:{"Content-Type":"application/json"},body:value===undefined?undefined:JSON.stringify(value)});const data=await res.json();if(!res.ok)throw new Error(data.error||"Request failed");return data;}
