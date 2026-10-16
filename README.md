@@ -57,3 +57,6 @@ Track title checks run by default; turn them off for artist, label or genre sear
 The Vercel project name is `b-side` (the exact `.vercel.app` alias depends on availability). Run `npm run build` to copy the frontend into `public/`; `vercel.json` routes API requests to `api/index.js`.
 
 Configure `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` in Vercel before deploying. The hosted backend uses persistent libSQL/Turso storage; local development continues to use the SQLite file. Hosted and local data are separate. Do not deploy with a temporary filesystem database. No local database files are included in deployments. Use Vercel's normal account sign-in for publishing; a custom domain requires ownership and DNS configuration.
+
+## Physical copies
+Search results include an expandable vinyl/CD section linking to Discogs and eBay seller searches. It opens automatically only when every selected source completes with no exact match in checked results. Pending, blocked or successful matches never trigger that claim. Users can open it at any time, including when a stream is found but a digital download is not. These links are marketplace searches, not verified in-stock items; exhaustive DSP coverage and live seller inventory are not provided.
