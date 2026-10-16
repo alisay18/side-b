@@ -53,3 +53,11 @@ test('Bandcamp numbered original-mix URLs match the base title',()=>{
  const body=page('* [![Image 2](https://f4.bcbits.com/cover.jpg)](https://anjunadeep.bandcamp.com/track/deep-in-my-soul-original-mix-1)TRACK\nfrom Deep In My Soul EP by 16BL');
  assert.equal(parseAvailability('bandcamp',body,{title:'16BL - Deep In My Soul',artist:''}).status,'available');
 });
+
+test('artist-after-title queries match an identified artist, not unrelated recordings or remixes',()=>{
+ const target={title:'something just like this chainsmokers',artist:''};
+ const text=page('[The Chainsmokers, Coldplay](https://soundcloud.com/thechainsmokers) [Something Just Like This](https://soundcloud.com/thechainsmokers/something-just-like-this-1)');
+ assert.equal(parseAvailability('soundcloud',text,target).status,'available');
+ assert.equal(parseAvailability('soundcloud',text.replaceAll('thechainsmokers','anotherartist').replace('The Chainsmokers, Coldplay','Another Artist'),target).status,'not_found');
+ assert.equal(parseAvailability('soundcloud',text.replace('[Something Just Like This]','[Something Just Like This Nightcore]'),target).status,'not_found');
+});

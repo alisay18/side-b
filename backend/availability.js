@@ -21,6 +21,19 @@ function exactTitle(name,artist,title){
 }
 const contains=(s,t)=>!!normal(t)&&(' '+normal(s)+' ').includes(' '+normal(t)+' ');
 function permitted(id,raw){try{const u=new URL(raw);if(u.protocol!=='https:')return false;return id==='bandcamp'?u.hostname.endsWith('.bandcamp.com')&&/^\/track\//.test(u.pathname):id==='traxsource'?u.hostname==='www.traxsource.com'&&/^\/track\//.test(u.pathname):id==='beatport'?u.hostname==='www.beatport.com'&&/^\/track\//.test(u.pathname):id==='boomkat'?u.hostname==='boomkat.com'&&u.pathname.includes('/releases/'):u.hostname==='soundcloud.com'&&/^\/[^/]+\/[^/]+$/.test(u.pathname)&&!/^\/(search|tags|you|discover|getstarted)\//.test(u.pathname);}catch{return false;}}
+function matchesArtistKeywords(id,url,name,slug,line,query){
+ const q=normal(query);
+ const artistLabels=[...line.matchAll(/\[([^\]]+)\]\((https:\/\/[^\s)]+)\)/g)].filter(m=>{try{const u=new URL(m[2]);return id==='soundcloud'?u.hostname==='soundcloud.com'&&u.pathname.split('/').filter(Boolean).length===1:/\/artist[s]?\//.test(u.pathname);}catch{return false;}}).map(m=>m[1]).join(' ');
+ const artistText=normal(artistLabels+' '+(id==='soundcloud'?url.pathname.split('/')[1]:''));
+ const compact=s=>normal(s).replace(/^the /,'').replaceAll(' ','');
+ for(const raw of [name,slug]){
+  const t=normal(raw).replace(/ \d+$/,'').replace(/ original mix$/,'');
+  if(!t)continue;
+  const hint=q.startsWith(t+' ')?q.slice(t.length+1):q.endsWith(' '+t)?q.slice(0,-t.length-1):'';
+  if(hint&&artistText&&(contains(artistText,hint)||compact(artistText)===compact(hint)||compact(artistText)===('the'+compact(hint))))return true;
+ }
+ return false;
+}
 export function parseAvailability(id,text,target){
  const {artist,title}=searchTarget(target);
  const unknown={status:'unknown',reason:'The source could not be read reliably.'};
@@ -36,13 +49,15 @@ export function parseAvailability(id,text,target){
    const context=body.slice(m.index,Math.min(body.length,m.index+1000,next?.index??body.length));
    const name=m[1].startsWith('!')?slug:m[1]||slug;
    const listedTrack=id==='boomkat'&&context.split('\n').some(line=>line.trim().startsWith('*')&&contains(line,artist)&&exactTitle(line.replace(/^\s*\*\s*/,''),artist,title));
-   const titleMatches=exactTitle(name,artist,title)||exactTitle(slug,artist,title)||listedTrack;
+   const line=body.slice(body.lastIndexOf('\n',m.index)+1,body.indexOf('\n',m.index)<0?body.length:body.indexOf('\n',m.index));
+   const keywordMatch=!artist&&matchesArtistKeywords(id,url,name,slug,line,title);
+   const titleMatches=exactTitle(name,artist,title)||exactTitle(slug,artist,title)||listedTrack||keywordMatch;
    const plainContext=context.replace(/\]\([^)]*\)/g,']');
    const artistMatches=!artist||contains(name,artist)||contains(slug,artist)||contains(plainContext,artist);
    const suffix=normal(name+' '+slug).replaceAll(normal(title),'');
    // A remix/edit must be requested explicitly; a different version is not an exact match.
-   const otherVersion=['remix','remaster','edit','instrumental','acapella'].some(v=>contains(suffix,v)&&!contains(title,v));
-   if(titleMatches&&artistMatches&&!otherVersion){url.search='';url.hash='';return {status:'available',url:url.href,reason:id==='soundcloud'?'Matching track found. Download availability is confirmed on SoundCloud.':'Matching track found in source results.'};}
+   const otherVersion=['remix','remaster','edit','instrumental','acapella','cover','bootleg','mashup','nightcore'].some(v=>contains(suffix,v)&&!contains(title,v));
+   if(titleMatches&&artistMatches&&!otherVersion){url.search='';url.hash='';return {status:'available',url:url.href,reason:'Matching track listing found. Playback, purchase and download access are not verified.'};}
  }
  if(links.length)return {status:'not_found',reason:'No exact artist/title match in checked search results. Other releases or versions may appear; this is not a full-catalog guarantee.'};
  if(/\b(?:no results|no matching|nothing found|0 results|did not match|couldn't find|could not find)\b/i.test(body))return {status:'not_found',reason:'The source returned no matching search results.'};
