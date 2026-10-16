@@ -58,15 +58,23 @@ export function createAvailabilityChecker({fetcher=fetch,ttl=10*60*1000}={}){
   if(running>=5)return {status:'unknown',reason:'Checks are busy. Try again shortly.'};
   running++;
   let value;
+  const attempt=async query=>{
+   try{
+    const response=await fetcher('https://r.jina.ai/'+sourceUrls[id](query.toLowerCase()),{signal:AbortSignal.timeout(14000),headers:{Accept:'text/plain'}});
+    if(!response.ok)throw new Error('Source unavailable');
+    const reader=response.body?.getReader();let text='';
+    if(reader){const decoder=new TextDecoder();while(true){const {done,value:chunk}=await reader.read();if(done)break;text+=decoder.decode(chunk,{stream:true});if(text.length>500000){await reader.cancel();throw new Error('Response too large');}}}else text=await response.text();
+    return parseAvailability(id,text,target);
+   }catch{return {status:'unknown',reason:'The source blocked the check, timed out, or could not be read. You can still search it directly.'};}
+  };
   try{
-   const url=sourceUrls[id]((target.artist+' '+target.title).trim().toLowerCase());
-   const response=await fetcher('https://r.jina.ai/'+url,{signal:AbortSignal.timeout(30000),headers:{Accept:'text/plain'}});
-   if(!response.ok)throw new Error('Source unavailable');
-   const reader=response.body?.getReader();let text='';
-   if(reader){const decoder=new TextDecoder();while(true){const {done,value:chunk}=await reader.read();if(done)break;text+=decoder.decode(chunk,{stream:true});if(text.length>500000){await reader.cancel();throw new Error('Response too large');}}}else text=await response.text();
-   value=parseAvailability(id,text,target);
-  }catch{value={status:'unknown',reason:'The source blocked the check, timed out, or could not be read. You can still search it directly.'};}
-  finally{running--;}
+   value=await attempt((target.artist+' '+target.title).trim());
+   // Broaden the source query without loosening the artist/title verification.
+   if(target.artist&&value.status!=='available'){
+    const fallback=await attempt(target.title);
+    if(fallback.status==='available'||value.status==='unknown')value=fallback;
+   }
+  }finally{running--;}
   value={...value,checkedAt:new Date().toISOString()};
   if(cache.size>=200)cache.delete(cache.keys().next().value);
   cache.set(key,{expires:now+(value.status==='unknown'?30000:ttl),value});return value;

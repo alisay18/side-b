@@ -43,3 +43,8 @@ test('a requested mix stays distinct and positive result counts are not empty re
  assert.equal(parseAvailability('bandcamp',page('10 results'),{artist:'',title:'Missing'}).status,'unknown');
  assert.equal(parseAvailability('bandcamp',page('0 results'),{artist:'',title:'Missing'}).status,'not_found');
 });
+
+test('artist searches retry a title-only query without accepting a different artist',async()=>{
+ const urls=[];const checker=createAvailabilityChecker({fetcher:async url=>{urls.push(url);return new Response(urls.length===1?page('Just a moment: security verification'):page('[Night Drive](https://example.bandcamp.com/track/night-drive)\nExample Artist'));}});
+ assert.equal((await checker('bandcamp',target)).status,'available');assert.equal(urls.length,2);assert.ok(urls[1].endsWith('q=night%20drive'));
+});
