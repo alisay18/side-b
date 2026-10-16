@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createAvailabilityChecker,parseAvailability} from '../backend/availability.js';
+import {createAvailabilityChecker,parseAvailability,searchTarget} from '../backend/availability.js';
 const target={artist:'Example Artist',title:'Night drive'};
 const page=body=>'Title: Search\nMarkdown Content:\n'+body;
 test('only the requested title and artist count; headings, related tracks and wrong versions do not',()=>{
@@ -30,4 +30,16 @@ test('title-only searches match the title but reject longer titles',()=>{
  const target={artist:'',title:'zz paname'};
  assert.equal(parseAvailability('bandcamp',page('[ZZ Paname](https://dko.bandcamp.com/track/zz-paname)'),target).status,'available');
  assert.equal(parseAvailability('bandcamp',page('[ZZ Paname Again](https://dko.bandcamp.com/track/zz-paname-again)'),target).status,'not_found');
+});
+
+test('case, accents, punctuation, spaces and explicit artist/title notation are flexible',()=>{
+ const body=page('[ZZ Paname](https://dko.bandcamp.com/track/zz-paname)\nMézigue');
+ for(const target of [{title:'zz paname',artist:''},{title:'  ZZ   PANAME! ',artist:''},{title:'Mezigue - ZZ Paname',artist:''},{title:'MÉZIGUE — zz paname',artist:''},{title:'Mezigue - ZZ Paname',artist:'Mezigue'}])assert.equal(parseAvailability('bandcamp',body,target).status,'available');
+ assert.deepEqual(searchTarget({title:'DJ-test',artist:''}),{title:'DJ-test',artist:''});
+});
+test('a requested mix stays distinct and positive result counts are not empty results',()=>{
+ const body=page('[Night Drive](https://www.traxsource.com/track/123/night-drive-dub-mix)\nExample Artist');
+ assert.equal(parseAvailability('traxsource',body,{artist:'Example Artist',title:'Night Drive Dub Mix'}).status,'available');
+ assert.equal(parseAvailability('bandcamp',page('10 results'),{artist:'',title:'Missing'}).status,'unknown');
+ assert.equal(parseAvailability('bandcamp',page('0 results'),{artist:'',title:'Missing'}).status,'not_found');
 });

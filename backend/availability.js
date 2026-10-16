@@ -6,10 +6,23 @@ const sourceUrls = {
  boomkat:q=>'https://boomkat.com/search/format_download?q='+encodeURIComponent(q)+'&view=list'
 };
 const normal=s=>s.normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
-const exactTitle=(name,artist,title)=>{let n=normal(name);const a=normal(artist);n=n.replace(new RegExp('(^| )'+a+'(?= |$)','g'),' ').trim().replace(/\s+/g,' ');n=n.replace(/(?: original mix| [ab][12]| \d+)$/,'').trim();return n===normal(title);};
+export function searchTarget({artist='',title=''}){
+ artist=artist.trim();title=title.trim().replace(/\s+/g,' ');
+ // A spaced separator is explicit artist/title notation; hyphenated names stay intact.
+ if(!artist){const parts=title.split(/\s+[-–—]\s+/);if(parts.length===2&&parts.every(Boolean)){[artist,title]=parts;}}
+ return {artist,title};
+}
+function exactTitle(name,artist,title){
+ const clean=value=>{let n=normal(value),a=normal(artist);if(a)n=n.replace(new RegExp('(^| )'+a+'(?= |$)','g'),' ').trim().replace(/\s+/g,' ');return n;};
+ const n=clean(name),t=clean(title);
+ if(n===t)return true;
+ // Treat an unlabeled original mix and a numbered URL as the same base title.
+ return n.replace(/(?: original mix| [ab][12]| \d+)$/,'').trim()===t;
+}
 const contains=(s,t)=>!!normal(t)&&(' '+normal(s)+' ').includes(' '+normal(t)+' ');
 function permitted(id,raw){try{const u=new URL(raw);if(u.protocol!=='https:')return false;return id==='bandcamp'?u.hostname.endsWith('.bandcamp.com')&&/^\/track\//.test(u.pathname):id==='traxsource'?u.hostname==='www.traxsource.com'&&/^\/track\//.test(u.pathname):id==='beatport'?u.hostname==='www.beatport.com'&&/^\/track\//.test(u.pathname):id==='boomkat'?u.hostname==='boomkat.com'&&u.pathname.includes('/releases/'):u.hostname==='soundcloud.com'&&/^\/[^/]+\/[^/]+$/.test(u.pathname)&&!/^\/(search|tags|you|discover|getstarted)\//.test(u.pathname);}catch{return false;}}
-export function parseAvailability(id,text,{artist,title}){
+export function parseAvailability(id,text,target){
+ const {artist,title}=searchTarget(target);
  const unknown={status:'unknown',reason:'The source could not be read reliably.'};
  if(!text.includes('Markdown Content:')||/Target URL returned error|Just a moment|security verification|captcha|rate limit exceeded/i.test(text))return unknown;
  const body=text.split('Markdown Content:')[1];
@@ -32,12 +45,13 @@ export function parseAvailability(id,text,{artist,title}){
    if(titleMatches&&artistMatches&&!otherVersion){url.search='';url.hash='';return {status:'available',url:url.href,reason:id==='soundcloud'?'Matching track found. Download availability is confirmed on SoundCloud.':'Matching track found in source results.'};}
  }
  if(links.length)return {status:'not_found',reason:'No exact artist/title match in checked search results. Other releases or versions may appear; this is not a full-catalog guarantee.'};
- if(/no results|no matching|nothing found|0 results|did not match|couldn't find|could not find/i.test(body))return {status:'not_found',reason:'The source returned no matching search results.'};
+ if(/\b(?:no results|no matching|nothing found|0 results|did not match|couldn't find|could not find)\b/i.test(body))return {status:'not_found',reason:'The source returned no matching search results.'};
  return unknown;
 }
 export function createAvailabilityChecker({fetcher=fetch,ttl=10*60*1000}={}){
  const cache=new Map();let running=0;
  return async function check(id,target){
+  target=searchTarget(target);
   if(!Object.hasOwn(sourceUrls,id))throw new Error('Invalid source');
   const key=JSON.stringify([id,normal(target.artist),normal(target.title)]),now=Date.now();
   const cached=cache.get(key);if(cached&&cached.expires>now)return cached.value;
@@ -45,7 +59,7 @@ export function createAvailabilityChecker({fetcher=fetch,ttl=10*60*1000}={}){
   running++;
   let value;
   try{
-   const url=sourceUrls[id](target.artist.toLowerCase()+' '+target.title.toLowerCase());
+   const url=sourceUrls[id]((target.artist+' '+target.title).trim().toLowerCase());
    const response=await fetcher('https://r.jina.ai/'+url,{signal:AbortSignal.timeout(30000),headers:{Accept:'text/plain'}});
    if(!response.ok)throw new Error('Source unavailable');
    const reader=response.body?.getReader();let text='';
