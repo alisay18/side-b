@@ -56,14 +56,14 @@ function run(){
  physical.append(physicalSummary);
  const artist=$('#matchArtist').value.trim();
  physicalSearchLinks(search,artist).forEach(item=>{const a=node('a',item.source+' · '+item.format+' ↗');a.href=item.url;a.target='_blank';a.rel='noopener noreferrer';physicalLinks.append(a);});
- physical.append(physicalLinks,node('p','Search seller listings. Check the edition and tracklist before buying.','crate-note'));
+ physical.append(physicalLinks);
  const checks=new Map(sources.map(id=>[id,'pending']));
  function recordCheck(id,status){checks.set(id,status);if(!physical.isConnected)return;if(shouldSuggestPhysical([...checks.values()])){physical.open=true;physicalSummary.textContent='No match on selected sources · Look for vinyl or CD';}}
 
  sources.forEach(id=>{const d=definitions[id],card=node('article',null,'store-result'),heading=node('h4',null,'source-heading'),logo=node('img');logo.src='logos/'+id+'.svg';logo.alt='';logo.width=25;logo.height=25;heading.append(logo,node('span',d.name));card.append(heading,node('p',search,'search-term'));
  let term=search;if(free&&['bandcamp','soundcloud'].includes(id))term+=' free download';
  const link=node('a','View tracks on '+d.name+' ↗','store-link');link.href=d.url(term);link.target='_blank';link.rel='noopener noreferrer';card.append(link);if($('#checkAvailability').checked){const status=node('p','Checking availability…','availability-status');status.setAttribute('role','status');card.append(status);request('/api/availability','POST',{source:id,title:search,artist:$('#matchArtist').value.trim()}).then(result=>{if(!card.isConnected)return;recordCheck(id,result.status);status.textContent=result.status==='available'?'Available':result.status==='not_found'?'Not found in checked results':'Unable to verify';status.dataset.status=result.status;link.textContent=result.status==='available'?'Available · Open track ↗':'Search '+d.name+' ↗';if(result.status==='available')link.href=result.url;}).catch(()=>{if(card.isConnected){recordCheck(id,'unknown');status.textContent='Unable to verify';}});}cards.append(card);});
- out.append(cards,physical,node('p',(version?'Version shortcuts add words to your search; check the mix on the source. ':'')+(free?'Free-download keywords apply to Bandcamp and SoundCloud only; availability is confirmed on the source.':'Availability and pricing are confirmed on each source.'),'result-note'));
+ out.append(cards,physical);
  if(location.hash!=='#dig')location.hash='#dig';else renderView();
 }
 $('#searchForm').onsubmit=e=>{e.preventDefault();run();};
