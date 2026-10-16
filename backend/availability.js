@@ -17,7 +17,7 @@ function exactTitle(name,artist,title){
  const n=clean(name),t=clean(title);
  if(n===t)return true;
  // Treat an unlabeled original mix and a numbered URL as the same base title.
- return n.replace(/(?: original mix| [ab][12]| \d+)$/,'').trim()===t;
+ return n.replace(/(?: [ab][12]| \d+)$/,'').replace(/ original mix$/,'').trim()===t;
 }
 const contains=(s,t)=>!!normal(t)&&(' '+normal(s)+' ').includes(' '+normal(t)+' ');
 function permitted(id,raw){try{const u=new URL(raw);if(u.protocol!=='https:')return false;return id==='bandcamp'?u.hostname.endsWith('.bandcamp.com')&&/^\/track\//.test(u.pathname):id==='traxsource'?u.hostname==='www.traxsource.com'&&/^\/track\//.test(u.pathname):id==='beatport'?u.hostname==='www.beatport.com'&&/^\/track\//.test(u.pathname):id==='boomkat'?u.hostname==='boomkat.com'&&u.pathname.includes('/releases/'):u.hostname==='soundcloud.com'&&/^\/[^/]+\/[^/]+$/.test(u.pathname)&&!/^\/(search|tags|you|discover|getstarted)\//.test(u.pathname);}catch{return false;}}

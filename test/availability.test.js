@@ -48,3 +48,8 @@ test('artist searches retry a title-only query without accepting a different art
  const urls=[];const checker=createAvailabilityChecker({fetcher:async url=>{urls.push(url);return new Response(urls.length===1?page('Just a moment: security verification'):page('[Night Drive](https://example.bandcamp.com/track/night-drive)\nExample Artist'));}});
  assert.equal((await checker('bandcamp',target)).status,'available');assert.equal(urls.length,2);assert.ok(urls[1].endsWith('q=night%20drive'));
 });
+
+test('Bandcamp numbered original-mix URLs match the base title',()=>{
+ const body=page('* [![Image 2](https://f4.bcbits.com/cover.jpg)](https://anjunadeep.bandcamp.com/track/deep-in-my-soul-original-mix-1)TRACK\nfrom Deep In My Soul EP by 16BL');
+ assert.equal(parseAvailability('bandcamp',body,{title:'16BL - Deep In My Soul',artist:''}).status,'available');
+});
